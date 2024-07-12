@@ -1,0 +1,68 @@
+#XXX Copy this file to tasks_console.conf and fill in the fields
+
+{
+	# This instance name must be unique within the network.  It is used
+	# as prefix in userid's
+	instance => 'tc001',
+
+	# Overrule the automatic detection of the virtual-host of the website
+	vhost    => 'https://tasks.open-console.eu',
+
+    #       XXXvvvv replace this one, with any hex string vvvXXX
+	secrets  => [ '9ed5714761d3c28ee83f2fb20d2991a3fe282b93' ],
+
+	#### Sessions
+
+	sessions => {
+	},
+
+	# Authentication
+	# At the moment pretty simple via a bearer token.  Open Console could use
+	# itself for authentication ;-)
+	# For each of the OwnerConsole and Connect instances, you need you configure
+	# the bearer token.
+
+	authentication => {
+		oc001 => 'fwlkjiowcno2iwlcwnohohj52tf2nooinon',  #XXX Change!!!
+	},
+
+	#### Databases
+
+	userdb  => {
+		server => 'mongodb://localhost:27017',  # this is the default for mongodb
+		dbname => 'users',
+	},
+
+	proofdb  => {
+		server => 'mongodb://localhost:27017',
+		dbname => 'proofs',
+	},
+
+	# Run this for the defaults:
+	#   su - postgres psql
+	#     create database ocminion_test;     # or ocminion
+	#     create user ocminion with password '$yourpasswd';
+	#     grant all privileges on database ocminion_test to ocminion;
+	#     \c ocminion_test
+	#        grant all on schema public to ocminion;   # why?
+
+	tasksdb => {
+		dbserver   => 'localhost:5432',   # default for postgres
+		dbname     => 'ocminion',         # default, or 'ocminion_test'
+		dbuser     => 'ocminion',         # default
+		dbpassword => '$your-passwd',     # required, test passwd != prod passwd!!!
+	},
+
+	# Minion is the batch processing framework.
+	# The best supported backend for Minion is PostgreSQL: other backends seem
+    # not to have picked-up changes in the jobs structure.
+	minion => {
+		workers => 5,
+	},
+
+	# When enabled, you get an minion administrative interface under /minion.
+	# Not yet tried.
+ 	minion_admin => {
+		enabled => 0,
+	},
+}

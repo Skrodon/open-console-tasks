@@ -1,0 +1,14 @@
+# Taken from the Minion::Guide
+
+[Unit]
+Description=Open Console Tasks
+After=postgresql.service
+
+[Service]
+Type=simple
+ExecStart=/home/sri/myapp/myapp.pl minion worker -m production
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+
