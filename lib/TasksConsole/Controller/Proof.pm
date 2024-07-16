@@ -11,44 +11,57 @@ use Log::Report 'open-console-tasks';
 sub registerTasks($)
 {	my ($class, $minion) = @_;
 	$minion->add_task(verifyWebsiteURL => \&_verifyWebsiteURL);
+	$minion->add_task(proofWebsiteFile => \&_proofWebsiteFile);
 }
 
 sub job()
 {	my $self = shift;
-	my $jobid   = $self->param('jobid');
-    my $session = OpenConsole::Session::Task->job($jobid, controller => $self);
+	my $jobid = $self->param('jobid');
+	my $job   = $::app->minion->job($jobid);
+
+    my $session = OpenConsole::Session::Task->job($job, controller => $self);
 	$session->reply;
 }
+
+### verifyWebsiteURL
 
 sub _verifyWebsiteURL($$)
 {	my ($job, $args) = @_;
-	my $session;
-
-	try {
-		$session = TasksConsole::Prover::Website->new(lang => $args->{lang});
-		$session->checkWebsite(%$args);
-	};
+	my $session = TasksConsole::Prover::Website->new(lang => $args->{lang});
+	try { $session->checkWebsite(%$args) };
 	$session->internalError($@->wasFatal) if $@;
-
-use Data::Dumper;
-if(open my $d, '>', '/tmp/debug') { $d->print(Dumper $session); $d->close }
-
 	$job->finish($session->_data);
 }
 
-sub verifyWebsiteURL($)
-{	my $self    = shift;
+sub verifyWebsiteURL()
+{	my $self   = shift;
+	my $req    = $self->req->json;
+	my %params = (
+		field   => ($req->{field}	// panic "No field"),
+		website => ($req->{website}	// panic "No website to check"),
+	);
+	$self->taskStart(verifyWebsiteURL => {}, $req, \%params, {})->reply;
+}
 
-	my $session = OpenConsole::Session::Task->create({}, lang => 'en', controller => $self);
-	my $data    = $self->req->json;
+### proofWebsiteFile
 
-	my $field   = $data->{field} or panic "No field";
-	my $url     = $data->{url}   or panic "No url to check";
+sub _proofWebsiteFile($$)
+{	my ($job, $args) = @_;
+	my $session = TasksConsole::Prover::Website->new(lang => $args->{lang});
+	try { $session->proofWebsiteFile(%$args) };
+	$session->internalError($@->wasFatal) if $@;
+	$job->finish($session->_data);
+}
 
-	my $settings = {};
-	my $jobid   = $self->startJob(verifyWebsiteURL => { field => $field, website => $url }, %$settings);
-	$session->jobQueued($jobid, $settings);
-	$session->reply;
+sub proofWebsiteFile()
+{	my $self   = shift;
+	my $req    = $self->req->json;
+	my %params = (
+		field   => ($req->{field}	// panic "No field"),
+		file    => ($req->{file}	// panic "No file to load"),
+		website => ($req->{website}	// panic "No website"),
+	);
+	$self->taskStart(proofWebsiteFile => {}, $req, \%params, {})->reply;
 }
 
 1;

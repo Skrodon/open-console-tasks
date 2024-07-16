@@ -6,6 +6,8 @@ use Mojo::Base 'Mojolicious::Controller';
 
 use Log::Report 'open-console-owner';
 
+use OpenConsole::Session::Task ();
+
 =chapter NAME
 
 TasksConsole::Controller - base-class for all task controllers
@@ -39,6 +41,17 @@ sub startJob($$%)
 	# Calling parameters are always an ARRAY in the database, altough we
 	# pass only a single HASH.
 	my $jobid = $self->minion->enqueue($task, [ $params ]);
+}
+
+=method taskStart $name, \%data, \%req, \%params, \%settings
+=cut
+
+sub taskStart($$$$)
+{	my ($self, $name, $data, $req, $params, $settings) = @_;
+	my $session = OpenConsole::Session::Task->create($data, lang => 'en', controller => $self);
+	my $jobid   = $self->startJob($name => $params, %$settings);
+	$session->jobQueued($jobid, $settings);
+	$session;
 }
 
 1;

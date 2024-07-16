@@ -109,6 +109,7 @@ sub startup
 	$r->post('/job/:jobid')->to('proof#job');   # generic poll point
 
 	$r->post('/proof/verifyWebsiteURL')->to('proof#verifyWebsiteURL');
+	$r->post('/proof/proofWebsiteFile')->to('proof#proofWebsiteFile');
 }
 
 1;

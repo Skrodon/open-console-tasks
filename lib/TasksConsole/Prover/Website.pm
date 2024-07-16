@@ -4,12 +4,17 @@
 package TasksConsole::Prover::Website;
 use parent 'OpenConsole::Session::Task';
 
+use warnings;
+use strict;
+
+use OpenConsole::Util  qw(get_page is_valid_zulu is_valid_token);
+
 use Log::Report        'open-console-tasks';
 
 use Encode             qw(encode decode);
-use HTTP::Status       qw(is_redirect is_client_error is_error);
+use HTTP::Status       qw(is_redirect is_client_error is_error is_success);
+use JSON               ();
 use List::Util         qw(first);
-use LWP::UserAgent     ();
 use Net::DNS::Resolver ();
 use Net::DNS::SEC      ();
 use Net::LibIDN2       qw(:all);
@@ -19,16 +24,9 @@ use URI                ();
 use URI::Escape        qw(uri_escape uri_unescape);
 use URI::Split         qw(uri_split uri_join);
 
-my ($resolver, $ua);
+my $resolver;
 BEGIN {
 	$resolver = Net::DNS::Resolver->new(dnssec => 1);
-
-	$ua       = LWP::UserAgent->new(
-		agent        => 'Open Console Verifier',
-		from         => 'support@open-console.eu',
-		max_redirect => 0,
-		max_size     => 1_000_000,
-	);
 }
 
 # From libidn2 version 0.3.6,
@@ -288,24 +286,12 @@ sub _verifyDNS($)
 sub _getWebpage($)
 {	my ($self, $field) = @_;
 	my $results = $self->results;
-	my %check;
 	my $url     = $results->{url_normalized};
-	$results->{site_check} = \%check;
 
-	my $start    = Time::HiRes::time;
-	my $response = $ua->get($url);
+	my ($response, $check) = get_page $self, $url;
+	$results->{site_check} = $check;
 
-#warn $response->headers->as_string;
-	my $code     = $response->code;
-
-	my $elapse   = $check{elapse}       = int( (Time::HiRes::time - $start) * 1000 ) . 'ms';
-	my $size     = $check{size}         = length $response->content;
-	$size        = $size > 2.5*1024 ? int(($size+512)/1024).'k' : $size.'b';
-	my $ct       = $check{content_type} = $response->content_type || 'no-content-type';
-
-	$self->_trace("GET $url returned $code");
-	$self->_trace("Frontpage downloaded in $elapse, $size $ct");
-
+	my $code    = $response->code;
 	if(is_client_error $code)
 	{	$self->addError($field, __x"Internal error: unabled to check the website.  Please contact support.");
 		return;
@@ -347,7 +333,7 @@ sub _getWebpage($)
 	}
 
 	if($canonical)
-	{	$check{canonical} = $canonical;
+	{	$check->{canonical} = $canonical;
 		my $canon  = URI->new($canonical);
 		my $website= URI->new($url);
 
@@ -364,10 +350,10 @@ sub _getWebpage($)
 		}
 	}
 	else
-	{	$self->_trace("No canonical name for website found in html.");
+	{	$self->_trace("No canonical name for the website found in the html.");
 	}
 
-	\%check;
+	$check;
 }
 
 sub checkWebsite(%)
@@ -384,6 +370,84 @@ sub checkWebsite(%)
 		or return undef;
 
 	$self->_getWebpage($field);
+	$self;
+}
+
+###
+
+sub _getJSON($$)
+{	my ($self, $field, $file) = @_;
+	my ($response, $fetch) = get_page $self, $file;
+
+	my $code      = $response->code;
+	unless(is_success $code)
+	{	$self->_trace("File could not be fetched, code $code");
+		$self->addError($field, __x"Could not fetch the challenge file.");
+		return ($fetch, undef);
+	}
+
+	# I don't care whether the server sees this a application/json
+
+	my $json = try { JSON->new->decode($response->decoded_content) };
+	if($@)
+	{	my $err = "$@";
+		(substr $err, 61) = '...' if length $err > 64;
+		$self->_trace("The JSON is corrupt: $err");
+		$self->addError($field, __x"The JSON in the file is corrupt.");
+		return ($fetch, undef);
+	}
+
+	if(ref $json ne 'ARRAY')
+	{	$self->_trace("JSON structure is an ".ref($json));
+		$self->addError($field, __x"The JSON file does not contain an ARRAY of records.");
+		return ($fetch, undef);
+	}
+
+	$self->_trace("The JSON looks healthy");
+	($fetch, $json);
+}
+
+sub proofWebsiteFile(%)
+{	my ($self, %args) = @_;
+	my $field     = $args{field};
+	my $file      = $args{file};
+	my $website   = $args{website};
+
+	$self->_trace("Proving website ownership via source '$file'");
+
+	my ($fetch, $json) = $self->_getJSON($field, $file);
+
+	my $results = $self->results;
+	$results->{file_fetch} = $fetch;
+
+	my @defs;
+	foreach my $node (@$json)
+	{	my $version = $node->{version};
+		$version =~ m!^website file [0-9]{8}$! or next;
+
+		$node->{website} eq $website or next;
+
+		my $created = $node->{created} || '';
+		unless(is_valid_zulu $created)
+		{	$self->addError("Created timestamp corrupt.");
+			next;
+		}
+
+		my $challenge = $node->{challenge} || '';
+		if(is_valid_token $challenge)
+		{	$self->_trace("Found challenge created on $created.");
+		}
+		else
+		{	$self->addError("Invalid challenge which was created on $created");
+			next;
+		}
+		
+		# Do only return validated values to the caller!
+		push @defs, +{ version => $version, created => $created, challenge => $challenge };
+	}
+
+	$results->{matching_challenges} = \@defs;
+	$self;
 }
 
 1;
