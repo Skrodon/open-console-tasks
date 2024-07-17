@@ -23,6 +23,7 @@ use Time::HiRes        ();
 use URI                ();
 use URI::Escape        qw(uri_escape uri_unescape);
 use URI::Split         qw(uri_split uri_join);
+use XML::LibXML        ();
 
 my $resolver;
 BEGIN {
@@ -407,45 +408,83 @@ sub _getJSON($$)
 	($fetch, $json);
 }
 
+sub _validateChallenge($)
+{	my ($self, $node) = @_;
+
+	my $version = $node->{version};
+	$version =~ m!^website (?:file|html) [0-9]{8}$! or return ();
+
+	my $created = $node->{created} || '';
+	unless(is_valid_zulu $created)
+	{	$self->addError("Created timestamp corrupt.");
+		return ();
+	}
+
+	my $challenge = $node->{challenge} || '';
+	if(is_valid_token $challenge)
+	{	$self->_trace("Found challenge created on $created.");
+	}
+	else
+	{	$self->addError("Invalid challenge which was created on $created");
+		return ();
+	}
+		
+	# Do only return validated values to the caller!
+	+{ version => $version, created => $created, challenge => $challenge };
+}
+
 sub proofWebsiteFile(%)
 {	my ($self, %args) = @_;
 	my $field     = $args{field};
 	my $file      = $args{file};
 	my $website   = $args{website};
 
-	$self->_trace("Proving website ownership via source '$file'");
+	$self->_trace("Proving website ownership via json source file '$file'");
 
 	my ($fetch, $json) = $self->_getJSON($field, $file);
 
 	my $results = $self->results;
 	$results->{file_fetch} = $fetch;
+	$results->{matching_challenges} =
+		[ map $self->_validateChallenge($_), grep $_->{website} eq $website, @$json ];
+
+	$self;
+}
+
+sub proofWebsiteHTML(%)
+{	my ($self, %args) = @_;
+	my $field     = $args{field};
+	my $website   = $args{website};
+
+	$self->_trace("Proving website via HTML");
+
+	my ($response, $fetch) = get_page $self, $website;
+
+	my $results = $self->results;
+	$results->{file_fetch} = $fetch;
+
+	my $dom = XML::LibXML->load_html(string => $response->decoded_content,
+		recover           => 2,
+		suppress_errors   => 1,
+		suppress_warnings => 1,
+		no_network        => 1,
+		no_xinclude_nodes => 1,
+	);
+	my $xpc  = XML::LibXML::XPathContext->new($dom->documentElement);
+	my @meta = $xpc->findnodes('//meta[@name="open-console.website-owner"]');
 
 	my @defs;
-	foreach my $node (@$json)
-	{	my $version = $node->{version};
-		$version =~ m!^website file [0-9]{8}$! or next;
+	foreach my $meta (@meta)
+	{	my %def = map +($_->nodeName =~ s/^data-//r => $_->value),
+			grep $_->isa('XML::LibXML::Attr'),     # strip xmlns
+				$meta->attributes;
 
-		$node->{website} eq $website or next;
-
-		my $created = $node->{created} || '';
-		unless(is_valid_zulu $created)
-		{	$self->addError("Created timestamp corrupt.");
-			next;
-		}
-
-		my $challenge = $node->{challenge} || '';
-		if(is_valid_token $challenge)
-		{	$self->_trace("Found challenge created on $created.");
-		}
-		else
-		{	$self->addError("Invalid challenge which was created on $created");
-			next;
-		}
-		
-		# Do only return validated values to the caller!
-		push @defs, +{ version => $version, created => $created, challenge => $challenge };
+		push @defs, $self->_validateChallenge(\%def)
+			if $website eq ($def{content} //'');
 	}
 
+use Data::Dumper;
+warn Dumper \@defs;
 	$results->{matching_challenges} = \@defs;
 	$self;
 }
