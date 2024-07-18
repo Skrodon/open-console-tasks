@@ -13,6 +13,7 @@ sub registerTasks($)
 	$minion->add_task(verifyWebsiteURL => \&_verifyWebsiteURL);
 	$minion->add_task(proofWebsiteFile => \&_proofWebsiteFile);
 	$minion->add_task(proofWebsiteHTML => \&_proofWebsiteHTML);
+	$minion->add_task(proofWebsiteDNS  => \&_proofWebsiteDNS );
 }
 
 sub job()
@@ -83,6 +84,26 @@ sub proofWebsiteHTML()
 		website => ($req->{website}	// panic "No website"),
 	);
 	$self->taskStart(proofWebsiteHTML => {}, $req, \%params, {})->reply;
+}
+
+### proofWebsiteDNS
+
+sub _proofWebsiteDNS($$)
+{	my ($job, $args) = @_;
+	my $session = TasksConsole::Prover::Website->new(lang => $args->{lang});
+	try { $session->proofWebsiteDNS(%$args) };
+	$session->internalError($@->wasFatal) if $@;
+	$job->finish($session->_data);
+}
+
+sub proofWebsiteDNS()
+{	my $self   = shift;
+	my $req    = $self->req->json;
+	my %params = (
+		field   => ($req->{field}	// panic "No field"),
+		record  => ($req->{record}	// panic "No record"),
+	);
+	$self->taskStart(proofWebsiteDNS => {}, $req, \%params, {})->reply;
 }
 
 1;

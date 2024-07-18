@@ -111,6 +111,7 @@ sub startup
 	$r->post('/proof/verifyWebsiteURL')->to('proof#verifyWebsiteURL');
 	$r->post('/proof/proofWebsiteFile')->to('proof#proofWebsiteFile');
 	$r->post('/proof/proofWebsiteHTML')->to('proof#proofWebsiteHTML');
+	$r->post('/proof/proofWebsiteDNS' )->to('proof#proofWebsiteDNS' );
 }
 
 1;

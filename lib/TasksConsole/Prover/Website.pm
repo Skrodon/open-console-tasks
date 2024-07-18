@@ -4,10 +4,7 @@
 package TasksConsole::Prover::Website;
 use parent 'OpenConsole::Session::Task';
 
-use warnings;
-use strict;
-
-use OpenConsole::Util  qw(get_page is_valid_zulu is_valid_token);
+use OpenConsole::Util  qw(get_page is_valid_zulu is_valid_token timestamp);
 
 use Log::Report        'open-console-tasks';
 
@@ -378,7 +375,9 @@ sub checkWebsite(%)
 
 sub _getJSON($$)
 {	my ($self, $field, $file) = @_;
+	my $start     = timestamp;
 	my ($response, $fetch) = get_page $self, $file;
+	$fetch->{start} = $start;
 
 	my $code      = $response->code;
 	unless(is_success $code)
@@ -483,9 +482,48 @@ sub proofWebsiteHTML(%)
 			if $website eq ($def{content} //'');
 	}
 
-use Data::Dumper;
-warn Dumper \@defs;
+#warn Dumper \@defs;
 	$results->{matching_challenges} = \@defs;
+	$self;
+}
+
+sub proofWebsiteDNS(%)
+{	my ($self, %args) = @_;
+	my $field     = $args{field};
+	my $record    = $args{record};
+
+	$self->_trace("Proving website via DNS record");
+
+	my $results = $self->results;
+	my $fetch   = $results->{fetch} = { start => timestamp };
+
+	my @keys  = grep $_->type eq 'DNSKEY', $resolver->send($record, 'DNSKEY', 'IN')->answer;
+	$fetch->{got_dnskeys} = timestamp;
+	$self->_trace("Collected ".@keys." DNSKEYS");
+
+	my @sigs  = grep $_->type eq 'RRSIG',  $resolver->send($record, 'RRSIG', 'IN')->answer;
+	$fetch->{got_rrsigs}  = timestamp;
+	$self->_trace("Collected ".@sigs." RRSIG");
+
+	my ($status, $rr_txt) = $self->_getRR($field, $record => 'TXT', \@sigs, \@keys);
+	$fetch->{txt_dnssec}  = $status;
+	$self->_trace("Got ".@$rr_txt." TXT records");
+	$self->_trace("DNSSEC status $status");
+
+	my @defs;
+	foreach my $rr (@$rr_txt)
+	{	foreach my $challenge ($rr->txtdata)
+		{	unless(is_valid_token $challenge)
+			{	$self->addError(__x"Invalid challenge skipped.");
+				next;
+			}
+			push @defs, +{ challenge => $challenge };
+		}
+	}
+
+	$results->{matching_challenges} = \@defs;
+use Data::Dumper;
+warn Dumper $results;
 	$self;
 }
 
