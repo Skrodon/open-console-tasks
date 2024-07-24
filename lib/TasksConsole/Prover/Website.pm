@@ -221,17 +221,20 @@ sub _getRR($$$$)
 	my $packet = $resolver->send($host, $rr_type, 'IN');
 	my @answer = $packet->answer;
 	my @rr     = grep $_->type eq $rr_type, @answer;
-	@rr && @$keys or return (-2, \@rr);
+	unless(@rr && @$keys)
+	{	@$keys or $self->_trace("No DNSSEC records found for $rr_type.");
+		return (NO_DNSSEC => \@rr);
+	}
 
 	my $rrsig  = first { $_->typecovered eq $rr_type } @$sigs;
 	my ($status, $msg)
 	 = ! $rrsig
-	 ? (-1 => "DNSSEC signature missing for $rr_type records.")
+	 ? (MISSING_DNSSEC_SIGNATURE => "DNSSEC signature missing for $rr_type records.")
 	 : $rrsig->verify(\@rr, $keys)
-	 ? ( 1 => "DNSSEC valid signature on $rr_type records.")
-	 : ( 0 => "DNSSEC signature on $rr_type records is invalid.");
+	 ? (DNSSEC_SIGNED => "DNSSEC valid signature on $rr_type records.")
+	 : (DNSSEC_INVALID_SIGNATURE => "DNSSEC signature on $rr_type records is invalid.");
  
-	$self->addWarning($field => __"DNSSEC issues found.") if $status==0;
+	$self->addWarning($field => __"DNSSEC issues found.") if $status ne 'DNSSEC_SIGNED';
 	$self->_trace($msg);
 
 	($status, \@rr);
@@ -499,11 +502,11 @@ sub proofWebsiteDNS(%)
 
 	my @keys  = grep $_->type eq 'DNSKEY', $resolver->send($record, 'DNSKEY', 'IN')->answer;
 	$fetch->{got_dnskeys} = timestamp;
-	$self->_trace("Collected ".@keys." DNSKEYS");
+	$self->_trace("Collected ".@keys." DNSKEYS records");
 
 	my @sigs  = grep $_->type eq 'RRSIG',  $resolver->send($record, 'RRSIG', 'IN')->answer;
 	$fetch->{got_rrsigs}  = timestamp;
-	$self->_trace("Collected ".@sigs." RRSIG");
+	$self->_trace("Collected ".@sigs." RRSIG records");
 
 	my ($status, $rr_txt) = $self->_getRR($field, $record => 'TXT', \@sigs, \@keys);
 	$fetch->{txt_dnssec}  = $status;
