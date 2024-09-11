@@ -2,6 +2,7 @@
 
 # private confuration
 tasks_console.conf
+start
 
 #### Standard Perl mess
 !Build/

@@ -1,0 +1,13 @@
+ChangeLog
+LICENSE
+MANIFEST
+Makefile.PL
+README.md
+lib/TasksConsole.pm
+lib/TasksConsole/Controller.pm
+lib/TasksConsole/Controller/Proof.pm
+lib/TasksConsole/Prover/Website.pm
+script/tasks_console
+t
+tasks_console.conf-example
+tasksd.service

@@ -23,14 +23,14 @@ WriteMakefile
 	# Website and database framwork
 	'Mango'                  => 0,
 	'Mojolicious'            => 9.35,
-	'Mojolicious::Plugin::CSRFProtect' => 0.16,
 
-    # Required for the Minion task manager
+	# Required for the Minion task manager
 	'Mojolicious::Plugin::Minion'        => 0,
-    'Mojolicious::Plugin::Minion::Admin' => 0,
+	'Mojolicious::Plugin::Minion::Admin' => 0,
+	'Mojolicious::Plugin::Minion::Workers' => 0.9095,
 	'Minion'                 => 10.28,
-	'Minion::Backend::Pg'    => 1.02,
-    'Mojo::Pg'               => 0,
+#	'Minion::Backend::Pg'    => 0,  # part of Minion, no VERSION
+	'Mojo::Pg'               => 0,
    }
  , EXE_FILES    => []
  , AUTHOR       => 'Open Console <team@open-console.eu>'
@@ -55,13 +55,13 @@ WriteMakefile
 sub MY::postamble { <<'__POSTAMBLE' }
 
 # for DIST
-RAWDIR          = /tmp/TasksConsole/raw
-DISTDIR         = /tmp/TasksConsole/source
+RAWDIR          =
+DISTDIR         = /home/markov/shared/perl/public_html/open-console-tasks/source
 
 # for POD
 FIRST_YEAR      = 2024
 EMAIL           = mark@open-console.eu
-EXTENDS         = 
+EXTENDS         = ../open-console-core
 WEBSITE         = http://perl.overmeer.net/open-console
 
 css:

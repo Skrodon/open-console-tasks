@@ -12,14 +12,11 @@ The software for Open Console is spread of multiple repositories:
   * <https://github.com/Skrodon/open-console-connect> Connection provider
   * <https://github.com/Skrodon/open-console-tasks> batch processing (this repo)
 
-# Open Console, Website Owner Interface
+# Open Console, Tasks managate
  
-This project is part of https://open-console.eu Open Console, which is
-(mainly) an initiative let website-owners communicate with service
-which do something with their website, domain-name, or network.
+Open Console is a larger project: this sub-project only focusses on the batch-processing tasks.
 
-Open Console is a larger project: this sub-project only focusses on the
-batch-processing tasks.
+Tasks are introduce to off-load computation intensive and slow work from the website processes onto separate processes.  The parallellization of this work can be monitored and managed via minion.
 
 ## Installing Perl modules
 

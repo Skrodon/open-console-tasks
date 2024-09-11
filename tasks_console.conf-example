@@ -8,7 +8,7 @@
 	# Overrule the automatic detection of the virtual-host of the website
 	vhost    => 'https://tasks.open-console.eu',
 
-    #       XXXvvvv replace this one, with any hex string vvvXXX
+	#       XXXvvvv replace this one, with any hex string vvvXXX
 	secrets  => [ '9ed5714761d3c28ee83f2fb20d2991a3fe282b93' ],
 
 	#### Sessions
@@ -27,6 +27,8 @@
 	},
 
 	#### Databases
+	# In any non-production set-up, the dbnames should start with something
+	# like "test-" or "demo-"
 
 	userdb  => {
 		server => 'mongodb://localhost:27017',  # this is the default for mongodb
@@ -47,22 +49,22 @@
 	#        grant all on schema public to ocminion;   # why?
 
 	tasksdb => {
-		dbserver   => 'localhost:5432',   # default for postgres
-		dbname     => 'ocminion',         # default, or 'ocminion_test'
-		dbuser     => 'ocminion',         # default
-		dbpassword => '$your-passwd',     # required, test passwd != prod passwd!!!
+		dbserver => 'localhost:5432',   # default for postgres
+		dbname   => 'ocminion',         # default, or 'ocminion_test'
+		dbuser   => 'ocminion',         # default
+		dbpasswd => '$your-passwd',     # required, test passwd != prod passwd!!!
 	},
 
 	# Minion is the batch processing framework.
 	# The best supported backend for Minion is PostgreSQL: other backends seem
-    # not to have picked-up changes in the jobs structure.
+	# not to have picked-up changes in the jobs structure.
 	minion => {
 		workers => 5,
 	},
 
 	# When enabled, you get an minion administrative interface under /minion.
 	# Not yet tried.
- 	minion_admin => {
+	minion_admin => {
 		enabled => 0,
 	},
 }

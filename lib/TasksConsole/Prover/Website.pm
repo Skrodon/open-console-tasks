@@ -1,10 +1,14 @@
 # SPDX-FileCopyrightText: 2024 Mark Overmeer <mark@open-console.eu>
 # SPDX-License-Identifier: EUPL-1.2-or-later
 
+##### WARNING: the produced structures are documented in
+##### https://github.com/Skrodon/open-console-owner/wiki/Proof-Website-Ownership
+##### Do not forget to update the documentation!
+
 package TasksConsole::Prover::Website;
 use parent 'OpenConsole::Session::Task';
 
-use OpenConsole::Util  qw(get_page is_valid_zulu is_valid_token timestamp);
+use OpenConsole::Util  qw(get_page is_valid_zulu is_valid_token timestamp bool);
 
 use Log::Report        'open-console-tasks';
 
@@ -270,16 +274,21 @@ sub _verifyDNS($)
 	}
 	$check{cname_chain} = \@cnames;
 
-	($check{ipv4_dnssec}, my $rr_a) = $self->_getRR($field, $host => 'A', \@sigs, \@keys);
+	my ($sec4, $rr_a) = $self->_getRR($field, $host => 'A', \@sigs, \@keys);
+	$check{ipv4_dnssec} = $sec4 if @$rr_a;
 	$check{ipv4} = [ map $_->address, @$rr_a ];
 
-	($check{ipv6_dnssec}, my $rr_a4) = $self->_getRR($field, $host => 'AAAA', \@sigs, \@keys);
+	my ($sec6, $rr_a4) = $self->_getRR($field, $host => 'AAAA', \@sigs, \@keys);
+	$check{ipv6_dnssec} = $sec6 if @$rr_a4;
 	$check{ipv6} = [ map $_->address, @$rr_a4 ];
  
 	unless(@$rr_a || @$rr_a4)
 	{	$self->addError($field, __"The website address does not exist.");
 		return undef;
 	}
+
+	$check{all_dnssec} = bool(grep $_ ne 'DNSSEC_SIGNED',
+		(map $_->{dnssec}, @cnames), $sec4, $sec6);
 
 	\%check;
 }
@@ -525,8 +534,6 @@ sub proofWebsiteDNS(%)
 	}
 
 	$results->{matching_challenges} = \@defs;
-use Data::Dumper;
-warn Dumper $results;
 	$self;
 }
 
