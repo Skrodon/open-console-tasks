@@ -7,7 +7,7 @@ use 5.016;
 
 WriteMakefile
  ( NAME     => 'Open-Console-Tasks'
- , VERSION  => '0.01'
+ , VERSION  => '0.02'
 
  , PREREQ_PM    => { 
 	# Common purpose modules

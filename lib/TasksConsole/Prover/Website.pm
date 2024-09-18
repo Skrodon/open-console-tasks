@@ -213,9 +213,10 @@ sub _normalizeWebsiteURL($$%)
 		or $self->_trace("Continuing with '$normalized_url'.");
 
 	$self->results(+{
-		url_normalized   => $normalized_url,
-		url_printable    => (uri_join $scheme, $auth_printable, $path_printable),
-		host_puny        => $puny,
+		url_normalized => $normalized_url,
+		url_printable  => (uri_join $scheme, $auth_printable, $path_printable),
+		host_puny      => $puny,
+		host_utf8      => $host,
 	});
 }
 
@@ -238,6 +239,7 @@ sub _getRR($$$$)
 	 ? (DNSSEC_SIGNED => "DNSSEC valid signature on $rr_type records.")
 	 : (DNSSEC_INVALID_SIGNATURE => "DNSSEC signature on $rr_type records is invalid.");
  
+	#XXX we do not trust DNSSEC checks enough, at the moment, to make this into an error
 	$self->addWarning($field => __"DNSSEC issues found.") if $status ne 'DNSSEC_SIGNED';
 	$self->_trace($msg);
 

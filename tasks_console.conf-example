@@ -35,9 +35,9 @@
 		dbname => 'users',
 	},
 
-	proofdb  => {
+	assetsdb  => {
 		server => 'mongodb://localhost:27017',
-		dbname => 'proofs',
+		dbname => 'assets',
 	},
 
 	# Run this for the defaults:

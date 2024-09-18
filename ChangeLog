@@ -1,4 +1,9 @@
 ==== version history of open-console-tasks
 
+version 0.02: Wed 18 Sep 15:02:59 CEST 2024
+
+	Fixes:
+	- adapt to changes in other modules.
+
 version 0.01: Wed 09 Sep 15:22:25 CEST 2024
 	- Initial
