@@ -4,7 +4,7 @@
 package TasksConsole::Controller;
 use Mojo::Base 'Mojolicious::Controller';
 
-use Log::Report 'open-console-owner';
+use Log::Report 'open-console-tasks';
 
 use OpenConsole::Session::Task ();
 

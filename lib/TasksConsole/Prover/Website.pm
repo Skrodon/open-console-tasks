@@ -8,7 +8,8 @@
 package TasksConsole::Prover::Website;
 use parent 'OpenConsole::Session::Task';
 
-use OpenConsole::Util  qw(get_page is_valid_zulu is_valid_token timestamp bool);
+use OpenConsole::Util  qw(get_page is_valid_zulu is_valid_token timestamp bool
+	is_private_ipv4 is_private_ipv6);
 
 use Log::Report        'open-console-tasks';
 
@@ -278,11 +279,17 @@ sub _verifyDNS($)
 
 	my ($sec4, $rr_a) = $self->_getRR($field, $host => 'A', \@sigs, \@keys);
 	$check{ipv4_dnssec} = $sec4 if @$rr_a;
-	$check{ipv4} = [ map $_->address, @$rr_a ];
+	my $ipv4 = $check{ipv4} = [ map $_->address, @$rr_a ];
+	if(grep is_private_ipv4($_), @$ipv4)
+	{	$self->addError($field, __"The website host points to a private IPv4.");
+	}
 
 	my ($sec6, $rr_a4) = $self->_getRR($field, $host => 'AAAA', \@sigs, \@keys);
 	$check{ipv6_dnssec} = $sec6 if @$rr_a4;
-	$check{ipv6} = [ map $_->address, @$rr_a4 ];
+	my $ipv6 = $check{ipv6} = [ map $_->address, @$rr_a4 ];
+	if(grep is_private_ipv6($_), @$ipv6)
+	{	$self->addError($field, __"The website host points to a private IPv6.");
+	}
  
 	unless(@$rr_a || @$rr_a4)
 	{	$self->addError($field, __"The website address does not exist.");

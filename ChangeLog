@@ -2,6 +2,9 @@
 
 version 0.03:
 
+	Improvements:
+	- prover check hosts ipv[46] addresses not to be private.
+
 version 0.02: Wed 18 Sep 15:02:59 CEST 2024
 
 	Fixes:
